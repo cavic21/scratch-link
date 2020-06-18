@@ -3,10 +3,10 @@ workflows:
   macos:
     jobs:
       - build_for_mac
-  windows:
-    jobs:
-      - build_for_windows:
-          context: code-sign-generic
+  # windows:
+  #   jobs:
+  #     - build_for_windows:
+  #         context: code-sign-generic
 orbs:
   windows: circleci/windows@2.2.0
 jobs:
