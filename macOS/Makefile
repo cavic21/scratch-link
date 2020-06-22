@@ -2,6 +2,7 @@ SIGN_ID=Code-to-Learn Foundation
 APP_ID=edu.mit.scratch.scratch-link
 APP_BUNDLE=Scratch\ Link.app
 CONFIG=release
+CODESIGN_ARGS=# for something like "--keychain foo"
 
 # Assume there's a recent tag called something like "1.1" and turn "1.1-2-g123abc" into "1.1.2"
 APP_VERSION=$(shell git describe --always --long | sed 's/-\([0-9]*\)-g.*/.\1/')
@@ -33,15 +34,15 @@ dist: dist-mas dist-devid
 dist-mas: dist/mas-$(PACKAGE_FILE)
 
 dist/mas-$(PACKAGE_FILE): dist/tmp.mas/$(APP_BUNDLE)
-	productbuild --sign "3rd Party Mac Developer Installer: $(SIGN_ID)" --component-compression auto --component "$<" /Applications "$@"
+	productbuild --sign "3rd Party Mac Developer Installer: $(SIGN_ID)" ${CODESIGN_ARGS} --component-compression auto --component "$<" /Applications "$@"
 
 dist/tmp.mas/$(APP_BUNDLE): dist/$(APP_BUNDLE)
 	rm -rf dist/tmp.mas/
 	mkdir -p dist/tmp.mas/
 	cp -aR "$<" "$@"
-	xcrun swift-stdlib-tool --copy --sign "3rd Party Mac Developer Application: $(SIGN_ID)" --platform macosx --scan-folder "$@/Contents/MacOS" --destination "$@/Contents/Frameworks"
+	xcrun swift-stdlib-tool --copy --sign "3rd Party Mac Developer Application: $(SIGN_ID)" ${CODESIGN_ARGS} --platform macosx --scan-folder "$@/Contents/MacOS" --destination "$@/Contents/Frameworks"
 	test -r "$@/Contents/Frameworks/libswiftCore.dylib" # verify swift-stdlib-tool did its job
-	codesign --sign "3rd Party Mac Developer Application: $(SIGN_ID)" --identifier "$(APP_ID)" --deep --entitlements Packaging/entitlements.plist "$@"
+	codesign --sign "3rd Party Mac Developer Application: $(SIGN_ID)" ${CODESIGN_ARGS} --identifier "$(APP_ID)" --deep --entitlements Packaging/entitlements.plist "$@"
 	find "$@" -type f -perm +111 -print0 | xargs -0 codesign --verify --verbose
 
 # For "Developer ID" distribution outside the Mac App Store
@@ -58,15 +59,15 @@ dist/$(PACKAGE_FILE): dist/tmp.devid/app/$(APP_BUNDLE)
 	pkgbuild --root dist/tmp.devid/app/ --install-location /Applications/ --component-plist dist/tmp.devid/components.plist dist/tmp.devid/ScratchLink.pkg
 	productbuild --synthesize --package dist/tmp.devid/ScratchLink.pkg dist/tmp.devid/distribution.plist
 	# TODO: add a README and/or LICENSE to dist/tmp.devid/distribution.plist
-	productbuild --sign "Developer ID Installer: $(SIGN_ID)" --component-compression auto --distribution dist/tmp.devid/distribution.plist --package-path dist/tmp.devid/ "$@"
+	productbuild --sign "Developer ID Installer: $(SIGN_ID)" ${CODESIGN_ARGS} --component-compression auto --distribution dist/tmp.devid/distribution.plist --package-path dist/tmp.devid/ "$@"
 
 dist/tmp.devid/app/$(APP_BUNDLE): dist/$(APP_BUNDLE)
 	rm -rf dist/tmp.devid/app
 	mkdir -p dist/tmp.devid/app
 	cp -aR "$<" "$@"
-	xcrun swift-stdlib-tool --copy --sign "Developer ID Application: $(SIGN_ID)" --platform macosx --scan-folder "$@/Contents/MacOS" --destination "$@/Contents/Frameworks"
+	xcrun swift-stdlib-tool --copy --sign "Developer ID Application: $(SIGN_ID)" ${CODESIGN_ARGS} --platform macosx --scan-folder "$@/Contents/MacOS" --destination "$@/Contents/Frameworks"
 	test -r "$@/Contents/Frameworks/libswiftCore.dylib" # verify swift-stdlib-tool did its job
-	codesign --sign "Developer ID Application: $(SIGN_ID)" --identifier "$(APP_ID)" --deep --entitlements Packaging/entitlements.plist "$@"
+	codesign --sign "Developer ID Application: $(SIGN_ID)" ${CODESIGN_ARGS} --identifier "$(APP_ID)" --deep --entitlements Packaging/entitlements.plist "$@"
 	find "$@" -type f -perm +111 -print0 | xargs -0 codesign --verify --verbose
 
 $(BIN_FILE): $(SWIFT_SOURCES)

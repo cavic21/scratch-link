@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-# This script is designed to run in a CI environment which sets certain environment variables.
-# Under normal circumstances this should not be necessary for local development, even for Scratch team members.
+if [ "$CI" != "true" ]; then
+	echo "This script is designed to run in a CI environment which sets certain environment variables."
+	echo "This should not be necessary for local development, even for Scratch team members."
+	false
+fi
 
 function decodeToFile () {
 	if [ -z "$1" ]; then
@@ -16,7 +19,18 @@ function decodeToFile () {
 	echo "$2" | base64 -D -o "$1"
 }
 
+echo "Importing generic information..."
 decodeToFile scratch-device-manager.cer "${SDM_CERT}"
 decodeToFile certificate-authority.cer "${SDM_CERT_CA}"
 decodeToFile intermediate.cer "${SDM_CERT_INT}"
 decodeToFile scratch-device-manager.key "${SDM_CERT_KEY}"
+
+echo "Importing OS-specific information (OSTYPE=${OSTYPE})"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+	decodeToFile code-to-learn-macos.p12 "${CSC_MACOS}"
+	security -v create-keychain -p circleci circleci.keychain
+	security -v import code-to-learn-macos.p12 -k circleci.keychain -P "" -T /usr/bin/codesign
+	security unlock-keychain -p circleci circleci.keychain
+	security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k circleci circleci.keychain
+	rm code-to-learn-macos.p12
+fi

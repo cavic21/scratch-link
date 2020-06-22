@@ -3,11 +3,11 @@ workflows:
   macos:
     jobs:
       - build_for_mac:
-          context: scratch-device-manager
+          context: scratch-desktop-and-link
   # windows:
   #   jobs:
   #     - build_for_windows:
-  #         context: code-sign-generic
+  #         context: scratch-desktop-and-link
 orbs:
   windows: circleci/windows@2.2.0
 aliases:
@@ -28,7 +28,7 @@ jobs:
             *should_sign
           steps:
               - run:
-                  name: Write real SSL certificate files
+                  name: Import from CI context
                   working_directory: ./Certificates
                   command: ./import-certificates.sh
       - unless:
@@ -67,6 +67,9 @@ jobs:
           paths:
             - macOS/.build
       - run:
+          name: Check git status
+          command: git status
+      - run:
           name: Build the application
           command: make --directory=macOS zip
       - run:
@@ -80,7 +83,7 @@ jobs:
           steps:
               - run:
                   name: Sign the application
-                  command: make --directory=macOS dist
+                  command: make --directory=macOS dist CODESIGN_ARGS="--keychain circleci"
               - run:
                   name: Move signed build products to Artifacts directory
                   command: |
